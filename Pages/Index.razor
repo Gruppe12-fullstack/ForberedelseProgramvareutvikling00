@@ -3,3 +3,230 @@
 <PageTitle>Index</PageTitle>
 
 <h1>Clean Blazor</h1>
+@page "/"
+
+<PageTitle>Index</PageTitle>
+
+@inject NavigationManager Navigation
+
+<style>
+
+	.container {
+        width: 400px;
+        display: grid;
+        grid-template-rows: repeat(4, 1fr);
+        grid-template-columns: repeat(4, 1fr);
+        height: 400px;
+    }
+
+</style>
+<center>
+    <h1>TSD2490 – Oblig1.</h1>
+    <a href="/Memory">Go to Memory Game</a>
+
+</center>
+<center style="display: @visibleGame;">
+    <div class="container">
+        @for (var animalNumber = 0; animalNumber < selectedEmojiShuffled.Count; animalNumber++)
+        {
+            var animal = selectedEmojiShuffled[animalNumber];
+            var uniqueDescription = $"Button #{animalNumber}";
+            <button @onclick="@(() => ButtonClick(animal, uniqueDescription))"><h1>@animal</h1></button>
+    }
+    </div>
+    <div class="row">
+        <h2>Matches found: @matchesFound</h2>
+    </div>
+    <div class="row">
+        <h2>Time: @timeDisplay</h2>
+    </div>
+    <select @onchange="@SelectionChanged">
+        @foreach (var name in emojiSets.Keys) 
+        {
+            <option value="@name">@name</option>
+        }
+    </select>
+    <Button @onclick="@ResetButton">Play Again?</Button>
+    <ol>
+
+    </ol>
+</center>
+
+<center>
+    <input type="text" placeholder="Skriv inn brukernavn:" @onchange="OnBrukernavn" />
+    <h3>Scoreboard</h3>
+    <div style="display: @visibleName;">
+            <div>
+            @brukernavn tid @secondSeconds:
+            </div>
+
+    </div>
+</center>
+
+@code {
+    Dictionary<string, List<string>> emojiSets = new Dictionary<string, List<string>>();
+    Dictionary<float, string> nameSets = new Dictionary<float, string>();
+
+    string visibleName = "none";
+    string visibleGame = "none";
+    string brukernavn;
+    private float secondsRemaining = 200;
+    bool isGameEnded = false;
+    float secondSeconds;
+
+    private void SetUpEmojiSets()
+    {
+        List<string> animalEmoji = new List<string>()
+            {
+                "🐇","🐇",
+                "🦌","🦌",
+                "🐈","🐈",
+                "🐄","🐄",
+                "🐟","🐟",
+                "🐕","🐕",
+                "🐎","🐎",
+                "🐙","🐙",
+            };
+
+        List<string> foodEmoji = new List<string>()
+            {
+                "🍔","🍔",
+                "🍕","🍕",
+                "🍟","🍟",
+                "🌮","🌮",
+                "🌯","🌯",
+                "🍣","🍣",
+                "🍩","🍩",
+                "🍪","🍪",
+            };
+
+        List<string> sportEmoji = new List<string>()
+            {
+                "⚽","⚽",
+                "🏀","🏀",
+                "🏈","🏈",
+                "⚾","⚾",
+                "🎾","🎾",
+                "🏐","🏐",
+                "🏓","🏓",
+                "🏒","🏒",
+            };
+
+        emojiSets.Add("Animals", animalEmoji);
+        emojiSets.Add("Food", foodEmoji);
+        emojiSets.Add("Sports", sportEmoji);
+    }
+    List<string> selectedEmojiShuffled = new List<string>();
+    int matchesFound = 0;
+    Timer timer;
+    string timeDisplay;
+
+    protected override void OnInitialized()
+    {
+        timer = new Timer(100);
+        timer.Elapsed += Timer_Tick;
+        SetUpEmojiSets();
+        SetUpGame(emojiSets["Animals"]);
+    }
+
+    private void SetUpGame(List<string> emojiSelection)
+    {
+        Random random = new Random();
+        isGameEnded = false;
+        selectedEmojiShuffled = emojiSelection
+            .OrderBy(item => random.Next())
+            .ToList();
+        matchesFound = 0;
+        secondsRemaining = 200;
+
+
+    }
+
+    string lastAnimalFound = string.Empty;
+    string lastDescription = string.Empty;
+
+    private void ButtonClick(string animal, string animalDescription)
+    {
+
+        if( lastAnimalFound == string.Empty)
+        {
+            lastAnimalFound = animal;
+            lastDescription = animalDescription;
+            timer.Start();
+
+        }
+        else if ((lastAnimalFound == animal) && (animalDescription != lastDescription))
+        {
+            lastAnimalFound = string.Empty;
+            selectedEmojiShuffled = selectedEmojiShuffled
+            .Select(a => a.Replace(animal, string.Empty))
+            .ToList();
+            matchesFound++;
+            if (matchesFound == 8)
+            {
+                GameFinished();
+                timeDisplay += " - Game Complete!";
+                SetUpGame(emojiSets["Animals"]);
+
+            }
+        }
+        else
+        {
+            lastAnimalFound = string.Empty;
+        }
+
+    }
+
+    private void ResetButton()
+    {
+        SetUpGame(emojiSets["Animals"]);
+
+    }
+
+    private void GameFinished()
+    {
+        timer.Stop();
+        isGameEnded = true;
+        visibleName = "block";
+
+    }
+
+
+    private void SelectionChanged(ChangeEventArgs e)
+    {
+        //New selection
+        SetUpGame(emojiSets[e.Value.ToString()]);
+
+    }
+
+    private void Timer_Tick(Object source, ElapsedEventArgs e)
+    {
+
+        InvokeAsync(() =>
+        {
+
+            secondsRemaining --;
+            if (secondsRemaining <= 0)
+            {
+                timeDisplay = "Game Over!";
+                GameFinished();
+                secondSeconds = secondsRemaining;
+
+            }
+            else
+            {
+                timeDisplay = (secondsRemaining / 10F)
+                .ToString("0.0s");
+            }
+            StateHasChanged();
+
+
+        });
+    }
+    private void OnBrukernavn(ChangeEventArgs changeEvent)
+    {
+        brukernavn = (string)changeEvent.Value;
+        nameSets.Add(secondsRemaining, brukernavn);
+        visibleGame = "block";
+    }
+}
